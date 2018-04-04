@@ -3,8 +3,10 @@
 namespace App\Domain\Component\Client;
 
 use GuzzleHttp\Client;
+use GuzzleHttp\Exception\ClientException;
 use Psr\Log\LoggerInterface;
-use \Symfony\Component\BrowserKit\Response;
+use Psr\Log\LogLevel;
+use \GuzzleHttp\Psr7\Response;
 
 /**
  * Class AbstractClient
@@ -56,25 +58,31 @@ abstract class AbstractClient implements ClientInterface
      * @param string $uri
      * @param array $options
      * @return Response
+     * @throws \Exception
      */
     public function request($method, $uri = '', array $options = [])
     {
-        $response = $this->getHttpClient()->request($method, $uri, $options);
 
-        $contextLog = [
-            'request' => [
-                'options' => $options
-            ],
-            'response' => [
-                'status' => $response->getStatusCode(),
-                'headers' => $response->getHeaders(),
-                'content' => (string)$response->getBody(),
-            ]
-        ];
+        try {
+            $response = $this->getHttpClient()->request($method, $uri, $options);
+            $this->log($method, $uri, $response->getStatusCode(), $response->getHeaders(), (string)$response->getBody(), $options);
+        } catch (\Exception $e) {
+            //TODO please improve this
+            $responseStatus = 500;
+            $responseHeaders = array();
+            $responseContent = $e->getMessage();
 
-        $logLevel = ($response->getStatusCode() >= 200 && $response->getStatusCode() < 300) ? 'DEBUG' : 'CRITICAL';
+            if ($e instanceof ClientException) {
+                $responseStatus = $e->getResponse()->getStatusCode();
+                $responseHeaders = $e->getResponse()->getHeaders();
+                $responseContent = (string)$e->getResponse()->getBody();
+            }
 
-        $this->getLogger()->log($logLevel, 'Request [' . $method . ']' . $uri, $contextLog);
+            $this->log($method, $uri, $responseStatus, $responseHeaders, $responseContent, $options);
+
+            throw $e;
+        }
+
 
         return $response;
     }
@@ -92,7 +100,6 @@ abstract class AbstractClient implements ClientInterface
         switch (true) {
             case preg_match('/json/', $contentType):
                 return json_decode($response->getBody(), true);
-                break;
             default:
                 throw new \InvalidArgumentException(printf('ContentType % not supported', $contentType));
         }*/
@@ -107,4 +114,21 @@ abstract class AbstractClient implements ClientInterface
     }
 
 
+    private function log($method, $uri, $responseStatus, $responseHeaders, $responseContent, array $options = []): void
+    {
+        $contextLog = [
+            'request' => [
+                'options' => $options
+            ],
+            'response' => [
+                'status' => $responseStatus,
+                'headers' => $responseHeaders,
+                'content' => $responseContent,
+            ]
+        ];
+
+        $logLevel = ($responseStatus >= 200 && $responseStatus < 300) ? LogLevel::DEBUG : LogLevel::CRITICAL;
+
+        $this->getLogger()->log($logLevel, 'Request [' . $method . ']' . $uri, $contextLog);
+    }
 }
