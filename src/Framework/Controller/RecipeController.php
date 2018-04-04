@@ -29,6 +29,7 @@ class RecipeController extends Controller
      */
     public function getRecipes(Request $request, RecipePuppyClient $recipePuppyClient)
     {
+        //TODO This manipulation of exception in a controller is not very good practice, so please develop events and event listeners, source from http://symfony.com/doc/current/event_dispatcher.html
         try {
             $recipesParameters = new GetRecipesParameters($request->get('page', 1), $request->get('ingredients'), $request->get('search'));
 
@@ -42,7 +43,7 @@ class RecipeController extends Controller
 
             if ($e instanceof ClientException) {
                 $status = 503;
-                $userMsg = 'An error has occurred, please try later';//TODO please, in the future use the translation service of symfony  for it, Ex: TranslatorInterface
+                $userMsg = 'An error has occurred, please try later';//TODO please, in the future use the translation service of symfony  for it, Ex: TranslatorInterface, source from https://symfony.com/doc/current/translation.html
                 $devMsg = 'Service Unavailable, problem with recipe puppy client';
 
                 return $this->json(array('errors' => array(
