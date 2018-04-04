@@ -101,7 +101,7 @@ abstract class AbstractClient implements ClientInterface
             case preg_match('/json/', $contentType):
                 return json_decode($response->getBody(), true);
             default:
-                throw new \InvalidArgumentException(printf('ContentType % not supported', $contentType));
+                throw new \InvalidArgumentException(printf('ContentType %s not supported', $contentType));
         }*/
     }
 
