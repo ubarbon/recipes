@@ -31,19 +31,32 @@ class RecipeControllerTest extends WebTestCase
         $this->defaultValidation($client->getResponse());
         $this->contentValidation($client->getResponse());
 
-        //Call Page 1
-        $client->request('GET', '/recipe?page=1&search=omelet&ingredients=onions,garlic');
-        $this->defaultValidation($client->getResponse());
-        $this->contentValidation($client->getResponse());
-        //save data
-        $firstResultElementOnPage1 = $this->deserializeContent($client->getResponse()->getContent())['results'][0];
+        $search = 'Omelet';
+        $ingredients = 'onions,garlic';
 
-        //Call Page 2 with same filters
-        $client->request('GET', '/recipe?page=2&search=omelet&ingredients=onions,garlic');
+        $query = http_build_query(array(
+            'page' => 1,
+            'search' => $search,
+            'ingredients' => $ingredients
+        ));
+        //Call Page 1
+        $client->request('GET', '/recipe?' . $query);
         $this->defaultValidation($client->getResponse());
         $this->contentValidation($client->getResponse());
         //save data
-        $firstResultElementOnPage2 =  $this->deserializeContent($client->getResponse()->getContent())['results'][0];
+        $firstResultElementOnPage1 = $this->deserializeContent($client->getResponse()->getContent())['recipes'][0];
+
+        $query = http_build_query(array(
+            'page' => 2,
+            'search' => $search,
+            'ingredients' => $ingredients
+        ));
+        //Call Page 2 with same filters
+        $client->request('GET', '/recipe?' . $query);
+        $this->defaultValidation($client->getResponse());
+        $this->contentValidation($client->getResponse());
+        //save data
+        $firstResultElementOnPage2 = $this->deserializeContent($client->getResponse()->getContent())['recipes'][0];
 
         //We verify that the values ​​are at least different
         if ($firstResultElementOnPage1['title'] && $firstResultElementOnPage2['title']) {
@@ -64,20 +77,70 @@ class RecipeControllerTest extends WebTestCase
     {
         $client = static::createClient();
 
-        $client->request('GET', '/recipe?page=1&search=omelet');
+        $search = 'Omelet';
+        $query = http_build_query(array(
+            'page' => 1,
+            'search' => $search
+        ));
+
+        $client->request('GET', '/recipe?' . $query);
 
         $this->defaultValidation($client->getResponse());
         $this->contentValidation($client->getResponse());
+
+        $responseData = $this->deserializeContent($client->getResponse()->getContent());
+
+        foreach ($responseData['recipes'] as $recipe) {
+            $this->searchValidation($search, $recipe);
+        }
+    }
+
+    public function testGetRecipesByPageAndIngredients()
+    {
+        $client = static::createClient();
+
+        $ingredients = 'onions,garlic';
+        $query = http_build_query(array(
+            'page' => 1,
+            'ingredients' => $ingredients
+        ));
+
+        $client->request('GET', '/recipe?' . $query);
+
+        $this->defaultValidation($client->getResponse());
+        $this->contentValidation($client->getResponse());
+
+        $responseData = $this->deserializeContent($client->getResponse()->getContent());
+
+        foreach ($responseData['recipes'] as $recipe) {
+            $this->ingredientsValidation(explode(',', $ingredients), $recipe);
+        }
     }
 
     public function testGetRecipesByPageAndSearchAndIngredients()
     {
         $client = static::createClient();
 
-        $client->request('GET', '/recipe?page=1&search=omelet&ingredients=onions,garlic');
+        $search = 'Omelet';
+        $ingredients = 'onions,garlic';
+
+        $query = http_build_query(array(
+            'page' => 1,
+            'search' => $search,
+            'ingredients' => $ingredients
+        ));
+
+        $client->request('GET', '/recipe?' . $query);
 
         $this->defaultValidation($client->getResponse());
         $this->contentValidation($client->getResponse());
+
+        $responseData = $this->deserializeContent($client->getResponse()->getContent());
+
+        foreach ($responseData['recipes'] as $recipe) {
+            $this->searchValidation($search, $recipe);
+            $this->ingredientsValidation(explode(',', $ingredients), $recipe);
+        }
     }
 
     private function defaultValidation(Response $response)
@@ -89,12 +152,12 @@ class RecipeControllerTest extends WebTestCase
     private function contentValidation(Response $response, $deep = false)
     {
         $responseData = $this->deserializeContent($response->getContent());
-        $this->assertArrayHasKey('results', $responseData, 'Not founded \'results\' key on response data');
+        $this->assertArrayHasKey('recipes', $responseData, 'Not founded \'recipes\' key on response data');
 
-        foreach ($responseData['results'] as $result) {
-            $this->assertArrayHasKey('title', $result, 'Not founded \'title\' key on result item');
-            $this->assertArrayHasKey('ingredients', $result, 'Not founded \'ingredients\' key on result item');
-            $this->assertArrayHasKey('thumbnail', $result, 'Not founded \'thumbnail\' key on result item');
+        foreach ($responseData['recipes'] as $recipe) {
+            $this->assertArrayHasKey('title', $recipe, 'Not founded \'title\' key on recipe item');
+            $this->assertArrayHasKey('ingredients', $recipe, 'Not founded \'ingredients\' key on recipe item');
+            $this->assertArrayHasKey('thumbnail', $recipe, 'Not founded \'thumbnail\' key on recipe item');
             if (!$deep) {
                 break;
             }
@@ -104,5 +167,24 @@ class RecipeControllerTest extends WebTestCase
     private function deserializeContent($content, $assoc = true)
     {
         return json_decode($content, $assoc);
+    }
+
+
+    private function searchValidation($search, $recipe)
+    {
+        $this->assertTrue(strpos($recipe['title'], trim($search)) !== false);
+    }
+
+    private function ingredientsValidation($ingredients, $recipe)
+    {
+        $condition = false;
+        foreach ($ingredients as $ingredient) {
+            if (in_array($ingredient, explode(', ', trim($recipe['ingredients'])))) {
+                $condition = true;
+                break;
+            }
+        }
+
+        $this->assertTrue($condition);
     }
 }

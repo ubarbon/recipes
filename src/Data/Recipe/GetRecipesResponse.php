@@ -2,6 +2,8 @@
 
 namespace App\Data\Recipe;
 
+use App\Domain\Component\Client\RecipePuppy\GetRecipe\GetRecipesResponse as RecipesResponse;
+
 /**
  * Class GetRecipesResponse
  * @package App\Data\Recipe
@@ -10,17 +12,17 @@ namespace App\Data\Recipe;
 class GetRecipesResponse
 {
     /**
-     * @var array
+     * @var RecipesResponse
      */
-    private $results;
+    private $recipesResponse;
 
     /**
      * GetRecipesResponse constructor.
-     * @param array $results
+     * @param RecipesResponse $recipeResponse
      */
-    public function __construct(array $results)
+    public function __construct(RecipesResponse $recipeResponse)
     {
-        $this->results = $results;
+        $this->recipesResponse = $recipeResponse;
     }
 
     /**
@@ -28,13 +30,13 @@ class GetRecipesResponse
      */
     public function getResponse()
     {
-        $response = array('results' => array());
+        $response = array('recipes' => array());
 
-        foreach ($this->getResults() as $result) {
-            $response['results'][] = array(
-                'title' => $result['title'],
-                'ingredients' => $result['ingredients'],
-                'thumbnail' => $result['thumbnail']
+        foreach ($this->getRecipeResponse()->getResults() as $recipe) {
+            $response['recipes'][] = array(
+                'title' => $recipe['title'],
+                'ingredients' => $recipe['ingredients'],
+                'thumbnail' => $recipe['thumbnail']
             );
         }
 
@@ -42,10 +44,10 @@ class GetRecipesResponse
     }
 
     /**
-     * @return array
+     * @return RecipesResponse
      */
-    private function getResults(): array
+    private function getRecipeResponse(): RecipesResponse
     {
-        return $this->results;
+        return $this->recipesResponse;
     }
 }

@@ -33,9 +33,7 @@ class RecipeController extends Controller
         try {
             $recipesParameters = new GetRecipesParameters($request->get('page', 1), $request->get('ingredients'), $request->get('search'));
 
-            $recipesResponse = $recipePuppyClient->getRecipes($recipesParameters);
-
-            $responseData = new GetRecipesResponse($recipesResponse->getResults());
+            $responseData = new GetRecipesResponse($recipePuppyClient->getRecipes($recipesParameters));
 
             return $this->json($responseData->getResponse());
 
